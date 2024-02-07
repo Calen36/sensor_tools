@@ -28,8 +28,7 @@ def get_rows_from_csv(filename: str) -> list[int, datetime, float, float]:
     return rows
             
 
-
-def extract_date(filename: str):
+def extract_date(filename: str) -> date | None:
     """ Вычленяем дату из имени файла """
     date_str = filename[:10]
     try:
@@ -37,8 +36,9 @@ def extract_date(filename: str):
         return date(year=year, month=month, day=day)
     except:
         return
+    
 
-def extract_sensor_id(filename:str):
+def extract_sensor_id(filename:str) -> date | None:
     """ Вычленяем sensor id из имени файла"""
     name, _ext = path.splitext(filename)
     try:
@@ -96,6 +96,7 @@ def get_sensor_data(workdir:str, ids: list[int], start_date: date, end_date: dat
                     humid_data[row[0]] = [row[1:]]
     root_app.update_idletasks()
 
+    # сортируем получившиеся датасеты по времени (1му элементу кортежа)
     for sensor_id, dataset in particle_data.items():
         particle_data[sensor_id] = sorted(dataset, key=lambda x: x[0])
     for sensor_id, dataset in humid_data.items():
@@ -117,19 +118,22 @@ def round_datetime_down(ts: datetime, round_by: str) -> datetime:
     return ts
 
 
-
 def bring_datasets_to_mean_values(datasets: dict[int: list[tuple[datetime, float, float]]],
                                   mean_over: str
                                   ) -> dict[int: list[tuple[datetime, float, float]]]:
+    """ Усредняем значения датасетов для временных отрезков """
     for sensor_id, dataset in datasets.items():
-        newdata = {}
+        newdata = {} # промежуточное хранилище
         for dt, value1, value2 in dataset:
-            actual_dt = round_datetime_down(dt, mean_over)
+            # все времена в выбранном периоде приводим к моменту начала периода
+            actual_dt = round_datetime_down(dt, mean_over) 
             if actual_dt in newdata:
                 newdata[actual_dt][0].append(value1)
                 newdata[actual_dt][1].append(value2)
             else:
                 newdata[actual_dt] = ([value1], [value2])
+        
+        # формируем новый датасет, где дата = дата начала периода для каждого периода, а значения = средние значения за период
         newdataset = []
         for dt, values in newdata.items():
             value1 = mean(values[0]) if values[0] else 0

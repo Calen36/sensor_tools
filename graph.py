@@ -91,15 +91,14 @@ def create_dual_dataset_point_graph(humid_datasets: dict[str, tuple[datetime, fl
     plt.show()
 
 
-
-
 if __name__ == "__main__":
-    # Example dataset
-    dataset1 = [(datetime(2022, 1, 1), 10, 11), (datetime(2022, 1, 2), 15, 17), (datetime(2022, 1, 3), 12, 15)]
-    dataset2 = [(datetime(2022, 1, 1), 8, 7), (datetime(2022, 1, 2), 11, 9), (datetime(2022, 1, 3), 9, 6)]
-    sensor_ids = {123: 'aбра_123', 234: "кадабра_234", 567: "Фу_567", 789: 'AHA789'}
-    create_dual_dataset_point_graph(humid_datasets={123: dataset1, 234: dataset2}, 
-                                    particle_datasets={789: dataset2}, 
-                                    sensor_names=sensor_ids, 
-                                    title='ABRACADABra',
-                                    graph_style='curve')
+    def test():
+        dataset1 = [(datetime(2022, 1, 1), 10, 11), (datetime(2022, 1, 2), 15, 17), (datetime(2022, 1, 3), 12, 15)]
+        dataset2 = [(datetime(2022, 1, 1), 8, 7), (datetime(2022, 1, 2), 11, 9), (datetime(2022, 1, 3), 9, 6)]
+        sensor_ids = {123: 'aбра_123', 234: "кадабра_234", 567: "Foo_567", 789: 'AHA789'}
+        create_dual_dataset_point_graph(humid_datasets={123: dataset1, 234: dataset2}, 
+                                        particle_datasets={789: dataset2}, 
+                                        sensor_names=sensor_ids, 
+                                        title='ABRACADABra',
+                                        graph_style='curve')
+    test()

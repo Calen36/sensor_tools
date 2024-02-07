@@ -27,12 +27,10 @@ class MainGUI(Tk):
         self.root.pack(expand=True, fill='both')
         self.main_frame = Frame(self.root)
         self.main_frame.pack(expand=True, fill='both')
-
+        # Применяем стиль
         self.tk.call("source", "azure.tcl")
         self.tk.call("set_theme", "light")
-
-
-        self.calendars = {}
+        self.calendars = {} # хранилище для объектов календарей
 
     # ВКЛАДКИ
         self.tab_control = ttk.Notebook(self.main_frame)
@@ -75,7 +73,7 @@ class MainGUI(Tk):
 
     # ВКЛАДКА 3
         self.create_calendars(frame=self.tab3_frame, name1='graph1', name2='graph2')
-        
+        # Ввод id сенсоров
         self.graph_id_entry_frame = Frame(self.tab3_frame)
         self.graph_id_label = Label(self.graph_id_entry_frame, text='ID сенсоров: ')
         self.graph_id_label.pack(side=LEFT)
@@ -90,9 +88,10 @@ class MainGUI(Tk):
         self.graph_title_entry.pack(side=RIGHT)
         self.graph_title_entry_frame.pack()
 
+        # Блок радио-переключателей
         self.radio_input_frame = Frame(self.tab3_frame)
         self.radio_input_frame.pack(anchor=W, padx=40, expand=True, fill='x')
-
+        # ВЫБОР ПЕРИОДА
         self.mean_period_frame = Frame(self.radio_input_frame)
         self.mean_period_frame.pack(side=LEFT, anchor=NW)    
         self.mean_period_var = StringVar()
@@ -109,20 +108,20 @@ class MainGUI(Tk):
         self.raio_mean_month.pack(anchor=W)
         self.raio_mean_year = Radiobutton(self.mean_period_frame, text="Год", variable=self.mean_period_var, value="year")
         self.raio_mean_year.pack(anchor=W)
-
-        self.graph_type_frame = Frame(self.radio_input_frame)
-        self.graph_type_frame.pack(side=LEFT, anchor=NW, padx=40)    
-        self.graph_type_var = StringVar()
-        self.graph_type_var.set("point")
-        self.graph_type_label = Label(self.graph_type_frame, text='Стиль графика: ')
-        self.graph_type_label.pack(anchor=W)
-        self.raio_point_type = Radiobutton(self.graph_type_frame, text="Точки", variable=self.graph_type_var, value="point")
+        # ВЫБОР СИТЛЯ ГРАФИКА
+        self.graph_style_frame = Frame(self.radio_input_frame)
+        self.graph_style_frame.pack(side=LEFT, anchor=NW, padx=40)    
+        self.graph_style_var = StringVar()
+        self.graph_style_var.set("point")
+        self.graph_style_label = Label(self.graph_style_frame, text='Стиль графика: ')
+        self.graph_style_label.pack(anchor=W)
+        self.raio_point_type = Radiobutton(self.graph_style_frame, text="Точки", variable=self.graph_style_var, value="point")
         self.raio_point_type.pack(anchor=W)
-        self.raio_line_type = Radiobutton(self.graph_type_frame, text="Линии", variable=self.graph_type_var, value="line")
+        self.raio_line_type = Radiobutton(self.graph_style_frame, text="Линии", variable=self.graph_style_var, value="line")
         self.raio_line_type.pack(anchor=W)
-        self.raio_line_type = Radiobutton(self.graph_type_frame, text="Линии и маркеры", variable=self.graph_type_var, value="default")
+        self.raio_line_type = Radiobutton(self.graph_style_frame, text="Линии и маркеры", variable=self.graph_style_var, value="default")
         self.raio_line_type.pack(anchor=W)
-
+        # Кнопка создания
         self.create_graph_btn = Button(self.radio_input_frame, padx=20, pady=20, text="Создать график", command=self.create_graph)
         self.create_graph_btn.pack(side=RIGHT)
 
@@ -140,7 +139,6 @@ class MainGUI(Tk):
         self.log_widget = ScrolledText(self.root, font=("consolas", "8", "normal"))
         self.log_widget.pack(expand=True, fill='both')
         self.redirect_logging()  # перенаправляем stdout в текстовый виджет
-
 
     def create_calendars(self, frame: Frame, name1: str, name2: str):
         """ Рисуем два календаря в заданном фрейме, сохраняем их в словаре self.calendars с заданными именами """
@@ -168,7 +166,7 @@ class MainGUI(Tk):
         date2 = self.calendars['graph2'].selection_get()
         if date1 > date2:
             date1, date2 = date2, date1
-        selected_graph_style = self.graph_type_var.get()
+        selected_graph_style = self.graph_style_var.get()
         selected_mean_period = self.mean_period_var.get()
         inputed_ids_raw = self.graph_id_entry.get()
         inputed_title = self.graph_title_entry.get()
@@ -230,15 +228,16 @@ class MainGUI(Tk):
             self.create_ss_button.config(state='active')
 
     def download(self):
-        """ Валидируем введенные данные и запускаем закачку """
+        """ Закачка файлов с данными """
         issues = []
+        # ВАЛИДИРУЕМ ВВЕДЕННЫЕ ДАННЫЕ
         date1 = self.calendars['dnld1'].selection_get()
         date2 = self.calendars['dnld2'].selection_get()
         if date1 > date2:
             date1, date2 = date2, date1
         delta = date2 - date1
-        # if delta > timedelta(days=90):
-        #     issues.append('СЛИШКОМ БОЛЬШОЙ РАЗБРОС ДАТ! (допустимый максимум - 90 дней)')
+        if delta > timedelta(days=2000):
+            issues.append('СЛИШКОМ БОЛЬШОЙ РАЗБРОС ДАТ!')
 
         if not path.exists(self.workdir):
             issues.append('РАБОЧИЙ КАТАЛОГ НЕ СУЩЕСТВУЕТ!')
@@ -259,10 +258,12 @@ class MainGUI(Tk):
             issues.append('ЗАДАЙТЕ ХОТЯ БЫ ОДИН ID СЕНСОРА!')
         
         self.logger.flush()
+        # Если возникли проблемы - отображаем их.
         for issue in issues:
             print(issue)
+        # Запускаем закачку
         if not issues:
-            self.download_button.config(state='disabled')
+            self.download_button.config(state='disabled')  # выключаем кнопку закачки на время работы
             batch_download(particle_ids=sorted(set(particle_ids)),
                            humid_ids=sorted(set(humid_ids)), 
                            workdir=self.workdir, 
