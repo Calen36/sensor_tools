@@ -38,6 +38,7 @@ def create_dual_dataset_point_graph(humid_datasets: dict[str, tuple[datetime, fl
     if title:
         title_font = font_manager.FontProperties(weight='bold', size=14)
         ax1.set_title(title, fontproperties=title_font)
+        fig.canvas.manager.set_window_title(title)
 
     bluish_color = bluish_colors_generator()
     reddish_color = reddish_colors_generator()

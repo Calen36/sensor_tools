@@ -17,12 +17,23 @@ from data import get_sensor_data, bring_datasets_to_mean_values
 from graph import create_dual_dataset_point_graph
 
 
+def get_workdir():
+    """ Находим рабочий каталог """
+    if sys.platform == 'linux':
+        home_dir = path.expanduser("~")
+        tmp_dir = path.join(home_dir, 'TMP')
+        return tmp_dir
+    if sys.platform == 'win32':
+        return 'C:\\TMP'
+    return ''
+
+
 class MainGUI(Tk):
     def __init__(self):
         Tk.__init__(self)
         self.title('Sensor tools')
         self.geometry("800x800")
-        self.workdir = 'C:\\TMP'
+        self.workdir = get_workdir()
         self.root = Frame(self)
         self.root.pack(expand=True, fill='both')
         self.main_frame = Frame(self.root)
