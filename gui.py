@@ -11,33 +11,32 @@ from tkinter.scrolledtext import ScrolledText
 from tkcalendar import Calendar
 
 from dnld import batch_download
+from data import get_sensor_data, bring_datasets_to_mean_values, get_lat_long
+from graph import render_graph
 from logger import PrintLogger
-from spreadsheet_deprecated import create_spreadsheet
-from data import get_sensor_data, bring_datasets_to_mean_values
-from graph import create_dual_dataset_point_graph
+from spreadsheet import create_spreadsheet
+from storage import get_workdir, ensure_dir_exists
 
-
-def get_workdir():
-    """ Находим рабочий каталог """
-    if sys.platform == 'linux':
-        home_dir = path.expanduser("~")
-        tmp_dir = path.join(home_dir, 'TMP')
-        return tmp_dir
-    if sys.platform == 'win32':
-        return 'C:\\TMP'
-    return ''
+# ОТКРЫТИЕ ФАЙЛА ВО ВНЕШНЕМ ПРИЛОЖЕНИИ
+if sys.platform == 'win32':
+    from os import startfile  # под linux данная функция отсутствует.
+else:
+    import subprocess
+    def startfile(filename: str):
+        subprocess.run(["xdg-open", filename])
 
 
 class MainGUI(Tk):
     def __init__(self):
         Tk.__init__(self)
         self.title('Sensor tools')
-        self.geometry("800x800")
+        self.geometry("800x850")
         self.workdir = get_workdir()
         self.root = Frame(self)
         self.root.pack(expand=True, fill='both')
         self.main_frame = Frame(self.root)
         self.main_frame.pack(expand=True, fill='both')
+        self.spreadsheet_path = None  # тут будет находиться путь к созданной таблице
         # Применяем стиль
         self.tk.call("source", "azure.tcl")
         self.tk.call("set_theme", "light")
@@ -49,12 +48,12 @@ class MainGUI(Tk):
         self.tab_control.add(self.tab1_frame, text="  Выкачка файлов  ")
 
         self.tab2_frame = Frame(self.tab_control)
-        # self.tab_control.add(self.tab2_frame, text="  Создание таблиц  ")
+        self.tab_control.add(self.tab2_frame, text=" Создание таблиц  ")
 
         self.tab3_frame = Frame(self.tab_control)
-        self.tab_control.add(self.tab3_frame, text="  Создание графиков  ")
+        self.tab_control.add(self.tab3_frame, text=" Создание графиков  ")
         self.tab_control.pack(expand=True, fill="both")
-        self.tab_control.select(self.tab3_frame)
+        self.tab_control.select(self.tab2_frame)
 
 
     # ВКЛАДКА 1
@@ -78,9 +77,20 @@ class MainGUI(Tk):
         self.download_button.pack(pady=10)
 
     # ВКЛАДКА 2
-        # self.show_calendars(frame=self.tab2_frame, name1='mean1', name2='mean2')
-        # self.create_ss_button = Button(self.tab2_frame, text="Создать таблицу", command=self.create_spreadsheet)
-        # self.create_ss_button.pack(pady=10)
+        self.create_calendars(frame=self.tab2_frame, name1='table1', name2='table2')
+        # Ввод id сенсоров
+        self.table_id_entry_frame = Frame(self.tab2_frame)
+        self.table_id_label = Label(self.table_id_entry_frame, text='ID сенсоров: ')
+        self.table_id_label.pack(side=LEFT)
+        self.table_id_entry = Entry(self.table_id_entry_frame, width=51)
+        self.table_id_entry.pack(side=LEFT)
+        self.table_id_entry_frame.pack()
+        self.create_ss_button = Button(self.tab2_frame, text="Создать таблицу", command=self.create_spreadsheet)
+        self.create_ss_button.pack(pady=10)
+        self.open_spreadsheet_button = Button(self.tab2_frame, text="Открыть таблицу", command=self.open_spreadsheet)
+        self.open_spreadsheet_button.pack(pady=30)
+        self.open_spreadsheet_button.config(state='disabled')
+
 
     # ВКЛАДКА 3
         self.create_calendars(frame=self.tab3_frame, name1='graph1', name2='graph2')
@@ -94,7 +104,7 @@ class MainGUI(Tk):
 
         self.graph_title_entry_frame = Frame(self.tab3_frame)
         self.graph_title_label = Label(self.graph_title_entry_frame, text='Заголовок графика: ')
-        self.graph_title_label.pack(side=LEFT)
+        self.graph_title_label.pack(side=LEFT, pady=5)
         self.graph_title_entry = Entry(self.graph_title_entry_frame, width=44)
         self.graph_title_entry.pack(side=RIGHT)
         self.graph_title_entry_frame.pack()
@@ -115,6 +125,8 @@ class MainGUI(Tk):
         self.raio_mean_hour.pack(anchor=W)
         self.raio_mean_day = Radiobutton(self.mean_period_frame, text="Сутки", variable=self.mean_period_var, value="day")
         self.raio_mean_day.pack(anchor=W)
+        self.raio_mean_week = Radiobutton(self.mean_period_frame, text="Неделя", variable=self.mean_period_var, value="week")
+        self.raio_mean_week.pack(anchor=W)
         self.raio_mean_month = Radiobutton(self.mean_period_frame, text="Месяц", variable=self.mean_period_var, value="month")
         self.raio_mean_month.pack(anchor=W)
         self.raio_mean_year = Radiobutton(self.mean_period_frame, text="Год", variable=self.mean_period_var, value="year")
@@ -123,19 +135,18 @@ class MainGUI(Tk):
         self.graph_style_frame = Frame(self.radio_input_frame)
         self.graph_style_frame.pack(side=LEFT, anchor=NW, padx=40)    
         self.graph_style_var = StringVar()
-        self.graph_style_var.set("point")
+        self.graph_style_var.set("line")
         self.graph_style_label = Label(self.graph_style_frame, text='Стиль графика: ')
         self.graph_style_label.pack(anchor=W)
-        self.raio_point_type = Radiobutton(self.graph_style_frame, text="Точки", variable=self.graph_style_var, value="point")
-        self.raio_point_type.pack(anchor=W)
         self.raio_line_type = Radiobutton(self.graph_style_frame, text="Линии", variable=self.graph_style_var, value="line")
         self.raio_line_type.pack(anchor=W)
+        self.raio_point_type = Radiobutton(self.graph_style_frame, text="Точки", variable=self.graph_style_var, value="point")
+        self.raio_point_type.pack(anchor=W)
         self.raio_line_type = Radiobutton(self.graph_style_frame, text="Линии и маркеры", variable=self.graph_style_var, value="default")
         self.raio_line_type.pack(anchor=W)
         # Кнопка создания
         self.create_graph_btn = Button(self.radio_input_frame, padx=20, pady=20, text="Создать график", command=self.create_graph)
         self.create_graph_btn.pack(side=RIGHT)
-
     # РАБОЧИЙ КАТАЛОГ
         self.workdir_frame = Frame(self.root, padx=20, pady=20)
         self.workdir_frame.pack(expand=True, fill="both")
@@ -145,7 +156,6 @@ class MainGUI(Tk):
                                         text="Сменить", 
                                         command=self.select_workdir)
         self.change_workdir_button.pack(side=RIGHT)
-
     # ЛОГ
         self.log_widget = ScrolledText(self.root, font=("consolas", "8", "normal"))
         self.log_widget.pack(expand=True, fill='both')
@@ -171,6 +181,9 @@ class MainGUI(Tk):
     
     def create_graph(self):
         """ Отрисовка графиков """
+        if not path.exists(self.workdir):
+            print(f'Не найден каталог {self.workdir}')
+            return
         issues = []
         # Получаем и валидируем введенные данные.
         date1 = self.calendars['graph1'].selection_get()
@@ -184,7 +197,7 @@ class MainGUI(Tk):
         try:
             if not inputed_ids_raw:
                 raise ValueError
-            sensor_ids = {int(y[0]): y[1] for y in [x.strip().split()+[x.strip().split()[0]] for x in inputed_ids_raw.split(',') if x]}
+            sensor_ids = {int(y[0]): y[1] for y in [x.strip().split()+[x.strip().split()[0]] for x in inputed_ids_raw.split(',') if x.strip()]}
         except:
             issues.append("ВВЕДИТЕ КОРРЕКТНЫЕ ID СЕНСОРОВ")
         
@@ -205,12 +218,13 @@ class MainGUI(Tk):
             if not particle_data and not humid_data:
                 print('Данных по введенным ID за заданный период не найдено.')
                 return
+            print('Сканирование завершено.')
             # УСРЕДНЯЕМ ДАННЫЕ ПО ПЕРИОДАМ, ЕСЛИ НЕОБХОДИМО
             if selected_mean_period != 'none':
                 humid_data = bring_datasets_to_mean_values(humid_data, mean_over=selected_mean_period)
                 particle_data = bring_datasets_to_mean_values(particle_data, mean_over=selected_mean_period)
             # ОТРИСОВЫВАЕМ ГРАФИК
-            create_dual_dataset_point_graph(humid_datasets=humid_data,
+            render_graph(humid_datasets=humid_data,
                                             particle_datasets=particle_data, 
                                             sensor_names=sensor_ids,
                                             title=inputed_title,
@@ -218,28 +232,65 @@ class MainGUI(Tk):
 
     def create_spreadsheet(self):
         """ Валидируем введенные данные и запускаем создание таблицы excel """
+        if not path.exists(self.workdir):
+            print(f'Не найден каталог {self.workdir}')
+            return
         issues = []
-        date1 = self.calendars['mean1'].selection_get()
-        date2 = self.calendars['mean2'].selection_get()
+        date1 = self.calendars['table1'].selection_get()
+        date2 = self.calendars['table2'].selection_get()
         if date1 > date2:
             date1, date2 = date2, date1
-        delta = date2 - date1
-        if delta > timedelta(days=1000):
-            issues.append('СЛИШКОМ БОЛЬШОЙ РАЗБРОС ДАТ! (допустимый максимум - 1000 дней)')
+        
+        try:
+            sensor_ids = [int(x) for x in self.table_id_entry.get().replace(',', ' ').split() if x]
+            if len(sensor_ids) not in (1, 2):
+                raise ValueError
+        except:
+            issues.append("ВВЕДИТЕ НЕ БОЛЕЕ ДВУХ КОРРЕКТНЫХ ID СЕНСОРОВ")
 
+        
         self.logger.flush()
         for issue in issues:
             print(issue)
         if not issues:
             self.create_ss_button.config(state='disabled')
-            create_spreadsheet(workdir=self.workdir,
-                               start_date=date1,
-                               end_date=date2,
-                               root_app=self)
+            print('Сканируется файловый архив...')
+            self.update_idletasks()
+            # Собираем данные из csv-файлов
+            particle_data, humid_data = get_sensor_data(workdir=self.workdir,
+                                                        ids=sensor_ids,
+                                                        start_date=date1,
+                                                        end_date=date2,
+                                                        root_app=self)
+            if not particle_data and not humid_data:
+                print('Данных по введенным ID за заданный период не найдено.')
+                self.create_ss_button.config(state='active')
+                return
+            print('Сканирование завершено.')
+            if len(particle_data)>1 or len(humid_data)>1:
+                print('Введенные ID относятся к одному типу!')
+                self.create_ss_button.config(state='active')
+                return
+            
+            spreadsheet_path = create_spreadsheet(workdir=self.workdir,
+                                                  humid_data=humid_data,
+                                                  particle_data=particle_data,
+                                                  start_date=date1,
+                                                  end_date=date2,)
             self.create_ss_button.config(state='active')
+            if spreadsheet_path:
+                self.spreadsheet_path = spreadsheet_path
+                self.open_spreadsheet_button.config(state='active')
+
+    def open_spreadsheet(self):
+        startfile(self.spreadsheet_path)
 
     def download(self):
         """ Закачка файлов с данными """
+        workdir_ok = ensure_dir_exists(self.workdir)
+        print(workdir_ok)
+        if not workdir_ok:
+            return
         issues = []
         # ВАЛИДИРУЕМ ВВЕДЕННЫЕ ДАННЫЕ
         date1 = self.calendars['dnld1'].selection_get()
@@ -258,11 +309,11 @@ class MainGUI(Tk):
         humid_entered = self.humid_id_entry.get().strip()
         particle_ids, humid_ids = [], []
         try:
-            particle_ids = [int(x) for x in particle_endered.split(',') if x]
+            particle_ids = [int(x) for x in particle_endered.replace(',', ' ').split() if x]
         except:
             issues.append('НЕКОРРЕКТНЫЙ ID sds011!')
         try:
-            humid_ids = [int(x) for x in humid_entered.split(',') if x]
+            humid_ids = [int(x) for x in humid_entered.replace(',', ' ').split() if x]
         except:
             issues.append('НЕКОРРЕКТНЫЙ ID htu21d!')
         if not humid_entered and not particle_endered:
@@ -285,7 +336,7 @@ class MainGUI(Tk):
             print('>> ГОТОВО <<')
 
     def reset_logging(self):
-        """ Это не используется, но пусть полежит, может пригодится еще"""
+        """ Возврат вывода в stdout """
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
 
@@ -294,3 +345,9 @@ class MainGUI(Tk):
         self.logger = PrintLogger(self.log_widget)
         sys.stdout = self.logger
         sys.stderr = self.logger
+
+
+if __name__ == "__main__":
+    if __name__ == "__main__":
+        app = MainGUI()
+        app.mainloop()

@@ -5,13 +5,18 @@ from statistics import mean
 from tkinter import Tk
 
 
-def get_rows_from_csv(filename: str) -> list[int, datetime, float, float]:
-    """ Парсим csv файл"""
+def get_sensor_data_type(filename: str) -> str:
+    """ Определяем тип сенсора по имени файла """
     base_name = path.basename(filename)
-    # определяем тип сенсора по имени файла
     for row_type in ('sds011', 'htu21d'):
         if row_type in base_name:
-            break 
+            return row_type
+    raise ValueError('Имя файла имеет неверный формат') 
+  
+
+def get_rows_from_csv(filename: str) -> list[int, datetime, float, float]:
+    """ Парсим csv файл"""
+    row_type = get_sensor_data_type(filename)
   
     rows = []
     with open(filename, 'r') as file:
@@ -26,6 +31,21 @@ def get_rows_from_csv(filename: str) -> list[int, datetime, float, float]:
             except:
                 pass
     return rows
+            
+
+def get_lat_long(workdir:str,
+                 sensor_id: int,
+                 start_date: date,
+                 end_date: date,) -> tuple[float, float]:
+    """ Извлекаем широту и долготу сенсора """
+    for filename in get_csv_files(workdir, [sensor_id], start_date, end_date):
+        with open(filename, 'r') as file:
+            n = 0
+            for line in file.readlines():
+                n += 1
+                if n > 1:
+                    values = line.split(';')
+                    return float(values[3]), float(values[4])
             
 
 def extract_date(filename: str) -> date | None:
@@ -46,8 +66,9 @@ def extract_sensor_id(filename:str) -> date | None:
     except:
         return
 
+
 def get_csv_files(workdir: str, ids: list[int], start_date: date, end_date: date) -> list[str]:
-    """ Находим файлы, подходящие по дате """
+    """ Находим файлы, подходящие по дате и id """
     results = []
     for root, dirs, files in walk(workdir):
         for filename in files:
@@ -61,7 +82,12 @@ def get_csv_files(workdir: str, ids: list[int], start_date: date, end_date: date
     return results
 
 
-def get_sensor_data(workdir:str, ids: list[int], start_date: date, end_date: date, root_app: Tk) -> tuple[dict[int: tuple[datetime, float, float]], dict[int: tuple[datetime, float, float]]]:
+def get_sensor_data(workdir:str,
+                    ids: list[int],
+                    start_date: date,
+                    end_date: date,
+                    root_app: Tk
+                    ) -> tuple[dict[int: tuple[datetime, float, float]], dict[int: tuple[datetime, float, float]]]:
     """ Агрегирует все строки из всех подходящих по дате файлов в два словаря - particle_data и humid_data"""
     
     # находим файлы, подходящие по времени
@@ -115,13 +141,17 @@ def round_datetime_down(ts: datetime, round_by: str) -> datetime:
         return datetime(year=ts.year, month=ts.month, day=ts.day)
     if round_by == 'hour':
         return datetime(year=ts.year, month=ts.month, day=ts.day, hour=ts.hour)
+    if round_by == 'week':
+        monday = ts - timedelta(days=ts.weekday() % 7)
+        return datetime(year=monday.year, month=monday.month, day=monday.day)
     return ts
 
 
 def bring_datasets_to_mean_values(datasets: dict[int: list[tuple[datetime, float, float]]],
                                   mean_over: str
                                   ) -> dict[int: list[tuple[datetime, float, float]]]:
-    """ Усредняем значения датасетов для временных отрезков """
+    """ Усредняем значения датасетов для временных отрезков с заданным шагом """
+    result = {}
     for sensor_id, dataset in datasets.items():
         newdata = {} # промежуточное хранилище
         for dt, value1, value2 in dataset:
@@ -131,13 +161,63 @@ def bring_datasets_to_mean_values(datasets: dict[int: list[tuple[datetime, float
                 newdata[actual_dt][0].append(value1)
                 newdata[actual_dt][1].append(value2)
             else:
-                newdata[actual_dt] = ([value1], [value2])
-        
+                newdata[actual_dt] = ([value1], [value2])    
         # формируем новый датасет, где дата = дата начала периода для каждого периода, а значения = средние значения за период
         newdataset = []
         for dt, values in newdata.items():
             value1 = mean(values[0]) if values[0] else 0
             value2 = mean(values[1]) if values[1] else 0
             newdataset.append((dt, value1, value2))
-        datasets[sensor_id] = newdataset
-    return datasets
+        result[sensor_id] = newdataset
+    return result
+
+
+def combine_mean_datasets(humid_data: dict[int: list[tuple[datetime, float, float]]],
+                          particle_data:  dict[int: list[tuple[datetime, float, float]]],
+                          ) -> dict[str: dict[datetime: dict]]:
+    """ Формирует данные для печати в отображения """
+
+    if len(humid_data) not in (1, 0) or len(particle_data) not in (1, 0):
+        raise ValueError('Максимум 1 датчик каждого типа сенсоров.')
+    result = {}
+
+    for period in ('hour', 'day', 'week', 'month',):
+        if humid_data:
+            humid_id = list(humid_data.keys())[0]
+            combined_data = {ts: {'temp': round(v1, 2), 
+                                  'humid': round(v2, 2), 
+                                  'p1': None, 
+                                  'p2': None, 
+                                  'ids': {humid_id},
+                                  } for ts, v1, v2 in bring_datasets_to_mean_values(datasets=humid_data, 
+                                                                                                mean_over=period)[humid_id]}
+        else:
+            humid_id, combined_data = None, {}
+        if particle_data:
+            particle_id = list(particle_data.keys())[0]
+            for ts, p1, p2 in bring_datasets_to_mean_values(datasets=particle_data, 
+                                                            mean_over=period)[particle_id]:
+                if ts in combined_data:
+                    combined_data[ts]['p1'] = round(p1, 2)
+                    combined_data[ts]['p2'] = round(p2, 2)
+                    combined_data[ts]['ids'].add(particle_id)
+                else:
+                    combined_data[ts] = {'temp': None,
+                                         'humid': None,
+                                         'p1': round(p1, 2),
+                                         'p2': round(p2, 2),
+                                         'ids': {particle_id}}
+        result[period] = combined_data
+    return result
+
+
+
+if __name__ == "__main__":
+    fn = '/home/durito/Sensor_data/2024/2024-02-01_htu21d_sensor_216.csv'
+    with open(fn, 'r') as file:
+        reader = csv.reader(file, delimiter='l')
+        for i, row in enumerate(reader):
+            val = row[3]
+
+            print(val)
+            break

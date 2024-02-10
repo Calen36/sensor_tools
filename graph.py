@@ -11,12 +11,14 @@ def bluish_colors_generator():
     while True:
         yield 'blue'
 
+
 def reddish_colors_generator():
     """ Выдает цвета в красно-оранжевой гамме """
-    for name in ['red', 'Coral', 'DarkOrange', 'DeepPink', 'DarkRed']:
+    for name in ['red', 'maroon', 'magenta', 'purple', 'orange', 'chocolate']:
         yield name
     while True:
-        yield 'red'
+        yield 'crimson'
+
 
 def marker_generator():
     """ Выдает символы маркеров """
@@ -26,13 +28,12 @@ def marker_generator():
         yield '.'
 
 
-def create_dual_dataset_point_graph(humid_datasets: dict[str, tuple[datetime, float]], 
-                                    particle_datasets: dict[str, tuple[datetime, float]],
-                                    sensor_names: dict[int:str] = {},
-                                    title: str = '',
-                                    graph_style: str = ''):
-    """ Рисуем графики на основе переданных датасетов. У каждого (из 2х) типа датасетов - своя ось ординат.
-    """
+def render_graph(humid_datasets: dict[str, tuple[datetime, float]], 
+                 particle_datasets: dict[str, tuple[datetime, float]],
+                 sensor_names: dict[int:str] = {},
+                 title: str = '',
+                 graph_style: str = ''):
+    """ Рисуем графики на основе переданных датасетов. У каждого (из 2х) типа датасетов - своя ось ординат."""
 
     fig, ax1 = plt.subplots()
     if title:
@@ -44,50 +45,63 @@ def create_dual_dataset_point_graph(humid_datasets: dict[str, tuple[datetime, fl
     reddish_color = reddish_colors_generator()
     marker = marker_generator()
     
+    ax1.set_xlabel('Время')
+
+    if humid_datasets and particle_datasets:
+        humid_ax = ax1
+        humid_legend_loc = 'upper left'
+        particle_ax = ax1.twinx()
+        particle_legend_loc ='upper right'
+    elif humid_datasets:
+        humid_ax = ax1
+        humid_legend_loc = 'upper left'
+    elif particle_datasets:
+        particle_ax = ax1
+        particle_legend_loc = 'upper left'
+
     # ГРАФИКИ ВЛАЖНОСТИ
-    for sensor_id, dataset in humid_datasets.items():
-        sensor_name = sensor_names.get(sensor_id, 'None')
-        x_values = [data[0] for data in dataset]
-        y_values = [data[2] for data in dataset]
-        
-        # различные стили
-        if graph_style == 'point':
-            ax1.scatter(x_values, y_values, label=sensor_name, color=next(bluish_color), s=5)
-        elif graph_style == 'line':
-            ax1.plot(x_values, y_values, label=sensor_name, color=next(bluish_color), linewidth=1)
-        else:
-            ax1.plot(x_values, y_values, label=sensor_name, color=next(bluish_color), linewidth=1, marker=next(marker))
-    
-    # Втарая ось ординат для частиц
-    ax2 = ax1.twinx()
+    if humid_datasets:
+        for sensor_id, dataset in humid_datasets.items():
+            sensor_name = sensor_names.get(sensor_id, 'None')
+            x_values = [data[0] for data in dataset]
+            y_values = [data[2] for data in dataset]
+            
+            # различные стили
+            if graph_style == 'point':
+                humid_ax.scatter(x_values, y_values, label=sensor_name, color=next(bluish_color), s=5)
+            elif graph_style == 'line':
+                humid_ax.plot(x_values, y_values, label=sensor_name, color=next(bluish_color), linewidth=1)
+            else:
+                humid_ax.plot(x_values, y_values, label=sensor_name, color=next(bluish_color), linewidth=1, marker=next(marker))
+
+        # Отображаем легенду    
+            humid_ax.legend(loc=humid_legend_loc)
+            # Подписи осей
+            humid_ax.set_ylabel('Влажность, %')
 
     # ГРАФИКИ ЧАСТИЦ
-    for sensor_id, dataset in particle_datasets.items():
-        sensor_name = sensor_names.get(sensor_id, 'None')
-        x_values = [data[0] for data in dataset]
-        y_values_p1 = [data[1] for data in dataset]
-        y_values_p2 = [data[2] for data in dataset]
+    if particle_datasets:
+        for sensor_id, dataset in particle_datasets.items():
+            sensor_name = sensor_names.get(sensor_id, 'None')
+            x_values = [data[0] for data in dataset]
+            y_values_p1 = [data[1] for data in dataset]
+            y_values_p2 = [data[2] for data in dataset]
+            
+            # различные стили
+            if graph_style == 'point':
+                particle_ax.scatter(x_values, y_values_p1, label=f'{sensor_name} pm10', color=next(reddish_color), s=5)
+                particle_ax.scatter(x_values, y_values_p2, label=f'{sensor_name} pm2.5', color=next(reddish_color), s=5)
+            elif graph_style == 'line':
+                particle_ax.plot(x_values, y_values_p1, label=f'{sensor_name} pm10', color=next(reddish_color), linewidth=1)
+                particle_ax.plot(x_values, y_values_p2, label=f'{sensor_name} pm2.5', color=next(reddish_color), linewidth=1)
+            else:
+                particle_ax.plot(x_values, y_values_p1, label=f'{sensor_name} pm10', color=next(reddish_color), linewidth=1, marker=next(marker))
+                particle_ax.plot(x_values, y_values_p2, label=f'{sensor_name} pm2.5', color=next(reddish_color), linewidth=1, marker=next(marker))
         
-        # различные стили
-        if graph_style == 'point':
-            ax2.scatter(x_values, y_values_p1, label=f'{sensor_name} pm10', color=next(reddish_color), s=5)
-            ax2.scatter(x_values, y_values_p2, label=f'{sensor_name} pm2.5', color=next(reddish_color), s=5)
-        elif graph_style == 'line':
-            ax2.plot(x_values, y_values_p1, label=f'{sensor_name} pm10', color=next(reddish_color), linewidth=1)
-            ax2.plot(x_values, y_values_p2, label=f'{sensor_name} pm2.5', color=next(reddish_color), linewidth=1)
-        else:
-            ax2.plot(x_values, y_values_p1, label=f'{sensor_name} pm10', color=next(reddish_color), linewidth=1, marker=next(marker))
-            ax2.plot(x_values, y_values_p2, label=f'{sensor_name} pm2.5', color=next(reddish_color), linewidth=1, marker=next(marker))
+        # легенда для частиц    
+        particle_ax.legend(loc=particle_legend_loc)
+        particle_ax.set_ylabel('Частицы, мкг/м³')
 
-    # Отображаем легенду    
-    ax1.legend(loc='upper left')
-    ax2.legend(loc='upper right')
-
-    # Подписи осей
-    ax1.set_xlabel('Время')
-    ax1.set_ylabel('Влажность, %')
-    ax2.set_ylabel('Частицы, ppm')
-    
     # Выдаем окно графика
     plt.show()
 
@@ -97,7 +111,7 @@ if __name__ == "__main__":
         dataset1 = [(datetime(2022, 1, 1), 10, 11), (datetime(2022, 1, 2), 15, 17), (datetime(2022, 1, 3), 12, 15)]
         dataset2 = [(datetime(2022, 1, 1), 8, 7), (datetime(2022, 1, 2), 11, 9), (datetime(2022, 1, 3), 9, 6)]
         sensor_ids = {123: 'aбра_123', 234: "кадабра_234", 567: "Foo_567", 789: 'AHA789'}
-        create_dual_dataset_point_graph(humid_datasets={123: dataset1, 234: dataset2}, 
+        render_graph(humid_datasets={123: dataset1, 234: dataset2}, 
                                         particle_datasets={789: dataset2}, 
                                         sensor_names=sensor_ids, 
                                         title='ABRACADABra',

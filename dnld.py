@@ -87,7 +87,7 @@ def unpack_gz(archive_file: str) -> Result:
         return Result(False, ex)
 
 
-def get_year_dir(workdir:str, day: date):
+def get_year_dir(workdir:str, day: date) -> str:
     """ Находим или создаем каталог года в рабочем каталоге"""
     year_dir = path.normpath(path.join(workdir, str(day.year)))
     if not path.exists(year_dir):
@@ -95,7 +95,12 @@ def get_year_dir(workdir:str, day: date):
     return year_dir
 
 
-def batch_download(particle_ids: list, humid_ids: list, workdir: str, start_date: date, end_date: date, root_app: Tk):
+def batch_download(particle_ids: list,
+                   humid_ids: list,
+                   workdir: str,
+                   start_date: date, 
+                   end_date: date, 
+                   root_app: Tk) -> None:
     """ Последовательная закачка и распаковка файлов """
     delta = end_date - start_date
     # создаем date объект для каждого дня в диапазоне от start_date до end_date
