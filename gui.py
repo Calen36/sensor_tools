@@ -1,5 +1,3 @@
-""" ОСНОВНОЕ Tkinter - приложение."""
-
 from datetime import timedelta
 from os import path
 import sys
@@ -166,9 +164,9 @@ class MainGUI(Tk):
         self.cal_label = Label(frame, text='Начальная и конечная даты периода: ')
         self.cal_label.pack()
         calendars_frame = Frame(frame)
-        self.calendars[name1] = Calendar(calendars_frame, selectmode='day', date_pattern='yyyy-mm-dd') #, locale='ru_RU')
+        self.calendars[name1] = Calendar(calendars_frame, selectmode='day', date_pattern='yyyy-mm-dd', locale='ru_RU')
         self.calendars[name1].pack(side=LEFT, padx=10)
-        self.calendars[name2] = Calendar(calendars_frame, selectmode='day', date_pattern='yyyy-mm-dd') #, locale='ru_RU')
+        self.calendars[name2] = Calendar(calendars_frame, selectmode='day', date_pattern='yyyy-mm-dd', locale='ru_RU')
         self.calendars[name2].pack(side=LEFT, padx=10)
         calendars_frame.pack(pady=10)
 
