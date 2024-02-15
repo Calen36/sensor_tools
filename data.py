@@ -181,7 +181,7 @@ def combine_mean_datasets(humid_data: dict[int: list[tuple[datetime, float, floa
         raise ValueError('Максимум 1 датчик каждого типа сенсоров.')
     result = {}
 
-    for period in ('hour', 'day', 'week', 'month',):
+    for period in ('hour', 'day', 'week', 'month', 'year'):
         if humid_data:
             humid_id = list(humid_data.keys())[0]
             combined_data = {ts: {'temp': round(v1, 2), 

@@ -82,7 +82,7 @@ def create_spreadsheet(workdir: str,
     wb.remove(wb.active)
     
     periods = (('hour', 'Час'), ('day', 'Сутки'), 
-               ('week', 'Неделя'), ('month', 'Месяц'),)
+               ('week', 'Неделя'), ('month', 'Месяц'), ('year', 'Год'))
 
     for period, sheet_name in periods:  # ИТЕРАЦИЯ ПО ПЕРИОДАМ УСРЕДЕНИЯ
         sheet = wb.create_sheet(sheet_name)  # создаем лист для каждого периода
