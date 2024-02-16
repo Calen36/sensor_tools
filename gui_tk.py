@@ -72,6 +72,9 @@ class MainGUI(Tk):
         self.humid_id_label.pack(side=LEFT)
         self.humid_id_entry = Entry(self.humid_id_entry_frame, width=40)
         self.humid_id_entry.pack(side=LEFT)
+        self.humid_id_entry.bind('<Control-c>', self.copy_text)
+        self.humid_id_entry.bind('<Control-v>', self.paste_text)
+
         self.humid_id_entry_frame.pack()
 
         self.particle_id_entry_frame = Frame(self.tab1_frame)
@@ -81,8 +84,6 @@ class MainGUI(Tk):
         self.particle_id_entry.pack(side=LEFT)
         self.particle_id_entry.bind('<Control-c>', self.copy_text)
         self.particle_id_entry.bind('<Control-v>', self.paste_text)
-
-
         self.particle_id_entry_frame.pack()
 
         self.download_button = Button(self.tab1_frame, text="  Начать скачивание  ", command=self.download)
