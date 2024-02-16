@@ -109,7 +109,6 @@ def get_sensor_data(workdir:str,
         
         rows = get_rows_from_csv(filepath)
         sensor_type = extract_sensor_data_type(filepath)
-        print(sensor_type, filepath)
         if sensor_type == 'sds011':
             for row in rows:
                 if row[0] in particle_data:
