@@ -66,13 +66,9 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
 
     ax1.grid(True, axis='x', color='lightgrey')
 
-    if particle_datasets:
-        particle_ax.grid(True, axis='y', color=particle_grid_color)
-
-
     # ГРАФИКИ ВЛАЖНОСТИ
     if humid_datasets:
-        humid_ax.grid(True, axis='y', color=humid_grid_color)
+        humid_ax.grid(True, axis='y', zorder=0, color=humid_grid_color)
 
         for sensor_id, dataset in humid_datasets.items():
             sensor_name = sensor_names.get(sensor_id, 'None')
@@ -85,7 +81,7 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
             elif graph_style == 'line':
                 humid_ax.plot(x_values, y_values, label=sensor_name, color=next(bluish_color), linewidth=1)
             else:
-                humid_ax.plot(x_values, y_values, label=sensor_name, color=next(bluish_color), linewidth=1, marker=next(marker))
+                humid_ax.plot(x_values, y_values, label=sensor_name, zorder=2, color=next(bluish_color), linewidth=1, marker=next(marker))
 
         # Отображаем легенду    
             humid_ax.legend(loc=humid_legend_loc)
@@ -95,6 +91,8 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
 
     # ГРАФИКИ ЧАСТИЦ
     if particle_datasets:
+        particle_ax.grid(True, axis='y', zorder=0, color=particle_grid_color)
+
         for sensor_id, dataset in particle_datasets.items():
             sensor_name = sensor_names.get(sensor_id, 'None')
             x_values = [data[0] for data in dataset]
