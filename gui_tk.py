@@ -72,8 +72,10 @@ class MainGUI(Tk):
         self.humid_id_label.pack(side=LEFT)
         self.humid_id_entry = Entry(self.humid_id_entry_frame, width=40)
         self.humid_id_entry.pack(side=LEFT)
-        self.humid_id_entry.bind('<Control-c>', self.copy_text)
-        self.humid_id_entry.bind('<Control-v>', self.paste_text)
+        self.humid_id_entry.bind('<Control-с>', self.copy_text)
+        self.humid_id_entry.bind('<Control-С>', self.copy_text)
+        self.humid_id_entry.bind('<Control-М>', self.paste_text)
+        self.humid_id_entry.bind('<Control-м>', self.paste_text)
 
         self.humid_id_entry_frame.pack()
 
