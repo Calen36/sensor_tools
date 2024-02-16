@@ -195,13 +195,15 @@ class MainGUI(Tk):
     def copy_text(self, event):
         widget = event.widget
         selected_text = widget.selection_get()
-        self.clipboard_clear()
-        self.clipboard_append(selected_text)
+        if selected_text:
+            self.clipboard_clear()
+            self.clipboard_append(selected_text)
 
     def paste_text(self, event):
         widget = event.widget
         text = self.clipboard_get()
-        widget.insert('insert', text)
+        print(text)
+        # widget.insert('insert', text)
 
     def create_graph(self):
         """ Отрисовка графиков """
