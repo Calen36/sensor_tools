@@ -66,6 +66,10 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
 
     ax1.grid(True, axis='x', color='lightgrey')
 
+    if particle_datasets:
+        particle_ax.grid(True, axis='y', color=particle_grid_color)
+
+
     # ГРАФИКИ ВЛАЖНОСТИ
     if humid_datasets:
         humid_ax.grid(True, axis='y', color=humid_grid_color)
@@ -91,8 +95,6 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
 
     # ГРАФИКИ ЧАСТИЦ
     if particle_datasets:
-        particle_ax.grid(True, axis='y', color=particle_grid_color)
-
         for sensor_id, dataset in particle_datasets.items():
             sensor_name = sensor_names.get(sensor_id, 'None')
             x_values = [data[0] for data in dataset]
