@@ -37,6 +37,7 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
 
     fig, ax1 = plt.subplots()
     if title:
+        title = title.replace('\\n', '\n')
         title_font = font_manager.FontProperties(weight='bold', size=14)
         ax1.set_title(title, fontproperties=title_font)
         fig.canvas.manager.set_window_title(title)
@@ -58,9 +59,13 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
     elif particle_datasets:
         particle_ax = ax1
         particle_legend_loc = 'upper left'
+    
+    ax1.grid(True, axis='x')
 
     # ГРАФИКИ ВЛАЖНОСТИ
     if humid_datasets:
+        humid_ax.grid(True, axis='y', color='lightsteelblue')
+
         for sensor_id, dataset in humid_datasets.items():
             sensor_name = sensor_names.get(sensor_id, 'None')
             x_values = [data[0] for data in dataset]
@@ -79,8 +84,11 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
             # Подписи осей
             humid_ax.set_ylabel('Влажность, %')
 
+
     # ГРАФИКИ ЧАСТИЦ
     if particle_datasets:
+        particle_ax.grid(True, axis='y', color='mistyrose')
+
         for sensor_id, dataset in particle_datasets.items():
             sensor_name = sensor_names.get(sensor_id, 'None')
             x_values = [data[0] for data in dataset]
@@ -102,6 +110,7 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
         particle_ax.legend(loc=particle_legend_loc)
         particle_ax.set_ylabel('Частицы, мкг/м³')
 
+
     # Выдаем окно графика
     plt.show()
 
@@ -110,10 +119,10 @@ if __name__ == "__main__":
     def test():
         dataset1 = [(datetime(2022, 1, 1), 10, 11), (datetime(2022, 1, 2), 15, 17), (datetime(2022, 1, 3), 12, 15)]
         dataset2 = [(datetime(2022, 1, 1), 8, 7), (datetime(2022, 1, 2), 11, 9), (datetime(2022, 1, 3), 9, 6)]
-        sensor_ids = {123: 'aбра_123', 234: "кадабра_234", 567: "Foo_567", 789: 'AHA789'}
+        sensor_ids = {123: 'aбра_123', 234: "кадабра_234", 567: "Foo_567", 789: 'AHAp'}
         render_graph(humid_datasets={123: dataset1, 234: dataset2}, 
                                         particle_datasets={789: dataset2}, 
                                         sensor_names=sensor_ids, 
-                                        title='ABRACADABra',
+                                        title='ABRACADABra\n@1afsd',
                                         graph_style='curve')
     test()

@@ -5,18 +5,16 @@ from statistics import mean
 from tkinter import Tk
 
 
-def get_sensor_data_type(filename: str) -> str:
-    """ Определяем тип сенсора по имени файла """
+def extract_sensor_data_type(filename: str) -> str:
+    """ Определяем тип сенсора по имени файла. Тип dht22 считаем эквивалентным htu21d """
     base_name = path.basename(filename)
-    for row_type in ('sds011', 'htu21d'):
-        if row_type in base_name:
-            return row_type
-    raise ValueError('Имя файла имеет неверный формат') 
-  
+    sensor_index = -3 if '_indoors.' not in filename else -4
+    return base_name.split('_')[sensor_index].replace('dht22', 'htu21d') 
+
 
 def get_rows_from_csv(filename: str) -> list[int, datetime, float, float]:
     """ Парсим csv файл"""
-    row_type = get_sensor_data_type(filename)
+    row_type = extract_sensor_data_type(filename)
   
     rows = []
     with open(filename, 'r') as file:
@@ -62,6 +60,8 @@ def extract_sensor_id(filename:str) -> date | None:
     """ Вычленяем sensor id из имени файла"""
     name, _ext = path.splitext(filename)
     try:
+        if name.endswith('_indoor'):
+            return int(name.split('_')[-2])
         return int(name.split('_')[-1])
     except:
         return
@@ -104,17 +104,19 @@ def get_sensor_data(workdir:str,
 
     # перебираем файлы, парсим, извлекаем строки и складываем в словари
     for filepath in files:
-        base_name = path.basename(filepath)
+        # base_name = path.basename(filepath)
         root_app.update_idletasks()
         
         rows = get_rows_from_csv(filepath)
-        if '_sds011_' in base_name:
+        sensor_type = extract_sensor_data_type(filepath)
+        print(sensor_type, filepath)
+        if sensor_type == 'sds011':
             for row in rows:
                 if row[0] in particle_data:
                     particle_data[row[0]].append(row[1:])
                 else:
                     particle_data[row[0]] = [row[1:]]
-        elif '_htu21d_' in base_name:
+        elif sensor_type == 'htu21d':
             for row in rows:
                 if row[0] in humid_data:
                     humid_data[row[0]].append(row[1:])
@@ -221,3 +223,8 @@ if __name__ == "__main__":
 
             print(val)
             break
+
+
+if __name__ == "__main__":
+    x = extract_sensor_data_type('2024-01-16_sps30_sensor_84439_indoors.csv')
+    print(x)

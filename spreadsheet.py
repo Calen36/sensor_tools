@@ -53,7 +53,8 @@ def form_period_repr(dt: datetime, period: str) -> str:
         plus_6days = dt + timedelta(days=6)
         return f"{dt.strftime('%Y.%m.%d')} - {plus_6days.strftime('%Y.%m.%d')}"
     if period == 'month':
-        return f"{dt.strftime('%b').capitalize()} {dt.year}"
+        # return f"{dt.strftime('%b').capitalize()} {dt.year}"
+        return f"{dt.year}.{dt.month}"
     if period == 'year':
         return str(dt.year)
     return 'ERR'

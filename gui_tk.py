@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, date
 from os import path
 import sys
 from tkinter import Tk, Button, Frame, Label, LEFT, RIGHT, TOP, Entry, TclError, Radiobutton, StringVar, ttk, NW, W, SE
@@ -8,7 +8,7 @@ from tkinter.scrolledtext import ScrolledText
 
 from tkcalendar import Calendar
 
-from dnld import batch_download
+from dnld_tk import batch_download
 from data import get_sensor_data, bring_datasets_to_mean_values, get_lat_long
 from graph import render_graph
 from logger import PrintLogger
@@ -38,7 +38,17 @@ class MainGUI(Tk):
         # Применяем стиль
         self.tk.call("source", "azure.tcl")
         self.tk.call("set_theme", "light")
-        self.calendars = {} # хранилище для объектов календарей
+        self.allow_download = True
+
+    # КАЛЕНДАРИ
+        self.cal_label = Label(self.main_frame, text='Начальная и конечная даты периода: ')
+        self.cal_label.pack()
+        self.cal_frame = Frame(self.main_frame)
+        self.cal1 = Calendar(self.cal_frame, selectmode='day', date_pattern='yyyy-mm-dd', locale='ru_RU')
+        self.cal1.pack(side=LEFT, padx=10)
+        self.cal2 = Calendar(self.cal_frame, selectmode='day', date_pattern='yyyy-mm-dd', locale='ru_RU')
+        self.cal2.pack(side=LEFT, padx=10)
+        self.cal_frame.pack(pady=10)
 
     # ВКЛАДКИ
         self.tab_control = ttk.Notebook(self.main_frame)
@@ -55,10 +65,10 @@ class MainGUI(Tk):
 
 
     # ВКЛАДКА 1
-        self.create_calendars(frame=self.tab1_frame, name1='dnld1', name2='dnld2')
+        # self.create_calendars(frame=self.tab1_frame, name1='dnld1', name2='dnld2')
 
         self.humid_id_entry_frame = Frame(self.tab1_frame, pady=10)
-        self.humid_id_label = Label(self.humid_id_entry_frame, text='ID сенсора htu21d: ')
+        self.humid_id_label = Label(self.humid_id_entry_frame, text='ID сенсора htu21d (dht22): ')
         self.humid_id_label.pack(side=LEFT)
         self.humid_id_entry = Entry(self.humid_id_entry_frame, width=40)
         self.humid_id_entry.pack(side=LEFT)
@@ -69,13 +79,21 @@ class MainGUI(Tk):
         self.particle_id_label.pack(side=LEFT)
         self.particle_id_entry = Entry(self.particle_id_entry_frame, width=40)
         self.particle_id_entry.pack(side=LEFT)
+        self.particle_id_entry.bind('<Control-c>', self.copy_text)
+        self.particle_id_entry.bind('<Control-v>', self.paste_text)
+
+
         self.particle_id_entry_frame.pack()
 
-        self.download_button = Button(self.tab1_frame, text="Начать скачивание", command=self.download)
+        self.download_button = Button(self.tab1_frame, text="  Начать скачивание  ", command=self.download)
         self.download_button.pack(pady=10)
+        self.download_stop_button = Button(self.tab1_frame, text="Прервать скачивание", command=self.stop_download)
+        self.download_stop_button.pack(pady=10)
+        self.download_stop_button.config(state='disabled')  # выключаем кнопку закачки на время работы
+
+
 
     # ВКЛАДКА 2
-        self.create_calendars(frame=self.tab2_frame, name1='table1', name2='table2')
         # Ввод id сенсоров
         self.table_id_entry_frame = Frame(self.tab2_frame)
         self.table_id_label = Label(self.table_id_entry_frame, text='ID сенсоров: ')
@@ -91,7 +109,6 @@ class MainGUI(Tk):
 
 
     # ВКЛАДКА 3
-        self.create_calendars(frame=self.tab3_frame, name1='graph1', name2='graph2')
         # Ввод id сенсоров
         self.graph_id_entry_frame = Frame(self.tab3_frame)
         self.graph_id_label = Label(self.graph_id_entry_frame, text='ID сенсоров: ')
@@ -159,17 +176,6 @@ class MainGUI(Tk):
         self.log_widget.pack(expand=True, fill='both')
         self.redirect_logging()  # перенаправляем stdout в текстовый виджет
 
-    def create_calendars(self, frame: Frame, name1: str, name2: str):
-        """ Рисуем два календаря в заданном фрейме, сохраняем их в словаре self.calendars с заданными именами """
-        self.cal_label = Label(frame, text='Начальная и конечная даты периода: ')
-        self.cal_label.pack()
-        calendars_frame = Frame(frame)
-        self.calendars[name1] = Calendar(calendars_frame, selectmode='day', date_pattern='yyyy-mm-dd', locale='ru_RU')
-        self.calendars[name1].pack(side=LEFT, padx=10)
-        self.calendars[name2] = Calendar(calendars_frame, selectmode='day', date_pattern='yyyy-mm-dd', locale='ru_RU')
-        self.calendars[name2].pack(side=LEFT, padx=10)
-        calendars_frame.pack(pady=10)
-
     def select_workdir(self):
         """ Смена рабочего каталога """
         new_dir = askdirectory(initialdir=self.workdir)
@@ -177,6 +183,25 @@ class MainGUI(Tk):
             self.workdir = new_dir
             self.workdir_label.config(text=f'Рабочий каталог: {self.workdir}')
     
+    def get_dates(self) -> tuple[date, date]:
+        """ Читаем введенные даты """
+        date1 = self.cal1.selection_get()
+        date2 = self.cal2.selection_get()
+        if date1 > date2:
+            date1, date2 = date2, date1
+        return date1, date2
+
+    def copy_text(self, event):
+        widget = event.widget
+        selected_text = widget.selection_get()
+        self.clipboard_clear()
+        self.clipboard_append(selected_text)
+
+    def paste_text(self, event):
+        widget = event.widget
+        text = self.clipboard_get()
+        widget.insert('insert', text)
+
     def create_graph(self):
         """ Отрисовка графиков """
         if not path.exists(self.workdir):
@@ -184,14 +209,11 @@ class MainGUI(Tk):
             return
         issues = []
         # Получаем и валидируем введенные данные.
-        date1 = self.calendars['graph1'].selection_get()
-        date2 = self.calendars['graph2'].selection_get()
-        if date1 > date2:
-            date1, date2 = date2, date1
+        date1, date2 = self.get_dates()
         selected_graph_style = self.graph_style_var.get()
         selected_mean_period = self.mean_period_var.get()
         inputed_ids_raw = self.graph_id_entry.get()
-        inputed_title = self.graph_title_entry.get()
+        inputed_title = rf'{self.graph_title_entry.get()}'
         try:
             if not inputed_ids_raw:
                 raise ValueError
@@ -223,10 +245,10 @@ class MainGUI(Tk):
                 particle_data = bring_datasets_to_mean_values(particle_data, mean_over=selected_mean_period)
             # ОТРИСОВЫВАЕМ ГРАФИК
             render_graph(humid_datasets=humid_data,
-                                            particle_datasets=particle_data, 
-                                            sensor_names=sensor_ids,
-                                            title=inputed_title,
-                                            graph_style=selected_graph_style)
+                         particle_datasets=particle_data, 
+                         sensor_names=sensor_ids,
+                         title=inputed_title,
+                         graph_style=selected_graph_style)
 
     def create_spreadsheet(self):
         """ Валидируем введенные данные и запускаем создание таблицы excel """
@@ -234,10 +256,7 @@ class MainGUI(Tk):
             print(f'Не найден каталог {self.workdir}')
             return
         issues = []
-        date1 = self.calendars['table1'].selection_get()
-        date2 = self.calendars['table2'].selection_get()
-        if date1 > date2:
-            date1, date2 = date2, date1
+        date1, date2 = self.get_dates()
         
         try:
             sensor_ids = [int(x) for x in self.table_id_entry.get().replace(',', ' ').split() if x]
@@ -246,7 +265,6 @@ class MainGUI(Tk):
         except:
             issues.append("ВВЕДИТЕ НЕ БОЛЕЕ ДВУХ КОРРЕКТНЫХ ID СЕНСОРОВ")
 
-        
         self.logger.flush()
         for issue in issues:
             print(issue)
@@ -291,10 +309,7 @@ class MainGUI(Tk):
             return
         issues = []
         # ВАЛИДИРУЕМ ВВЕДЕННЫЕ ДАННЫЕ
-        date1 = self.calendars['dnld1'].selection_get()
-        date2 = self.calendars['dnld2'].selection_get()
-        if date1 > date2:
-            date1, date2 = date2, date1
+        date1, date2 = self.get_dates()
         delta = date2 - date1
         if delta > timedelta(days=2000):
             issues.append('СЛИШКОМ БОЛЬШОЙ РАЗБРОС ДАТ!')
@@ -324,14 +339,23 @@ class MainGUI(Tk):
         # Запускаем закачку
         if not issues:
             self.download_button.config(state='disabled')  # выключаем кнопку закачки на время работы
-            batch_download(particle_ids=sorted(set(particle_ids)),
-                           humid_ids=sorted(set(humid_ids)), 
-                           workdir=self.workdir, 
-                           start_date=date1, 
-                           end_date=date2,
-                           root_app=self)
+            self.download_stop_button.config(state='active')
+            try:
+                batch_download(particle_ids=sorted(set(particle_ids)),
+                               humid_ids=sorted(set(humid_ids)), 
+                               workdir=self.workdir, 
+                               start_date=date1, 
+                               end_date=date2,
+                               root_app=self)
+            except Exception as ex:
+                print(f'ОШИБКА ПРИ ЗАГРУЗУКЕ: {ex}')
             self.download_button.config(state='active')
+            self.download_stop_button.config(state='disabled')
+            self.allow_download = True
             print('>> ГОТОВО <<')
+    
+    def stop_download(self):
+        self.allow_download = False
 
     def reset_logging(self):
         """ Возврат вывода в stdout """

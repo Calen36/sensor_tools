@@ -1,3 +1,4 @@
+from datetime import date
 from os import path, makedirs
 
 
@@ -6,6 +7,7 @@ def get_workdir() -> str:
     home_dir = path.expanduser("~")
     workdir = path.join(home_dir, 'Sensor_data')
     return path.normpath(workdir)
+
 
 
 def ensure_dir_exists(dirpath: str) -> bool:
@@ -19,3 +21,10 @@ def ensure_dir_exists(dirpath: str) -> bool:
             return False
     else:
         return True
+    
+
+def get_year_dir(workdir: str, day: date):
+    dirpath = path.normpath(path.join(workdir, f'{day.year}'))
+    dirpath_ok = ensure_dir_exists(dirpath)
+    if dirpath_ok:
+        return dirpath
