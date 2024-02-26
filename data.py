@@ -212,6 +212,20 @@ def combine_mean_datasets(humid_data: dict[int: list[tuple[datetime, float, floa
     return result
 
 
+def get_ds_time_span(humid_datasets: dict[str, tuple[datetime, float]], 
+                  particle_datasets: dict[str, tuple[datetime, float]]) -> timedelta:
+    """ Возвращет продолжительность временного промежутка за которые есть данные в датасетах """
+    all_dates = []
+    if isinstance(humid_datasets, dict):
+        for ds in humid_datasets.values():
+            all_dates.extend([p[0] for p in ds])
+    if isinstance(particle_datasets, dict):
+        for ds in particle_datasets.values():
+            all_dates.extend([p[0] for p in ds])
+    if all_dates:
+        return max(all_dates) - min(all_dates)
+    return timedelta(0)
+
 
 if __name__ == "__main__":
     fn = '/home/durito/Sensor_data/2024/2024-02-01_htu21d_sensor_216.csv'
