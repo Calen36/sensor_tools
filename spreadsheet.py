@@ -60,6 +60,40 @@ def form_period_repr(dt: datetime, period: str) -> str:
     return 'ERR'
     
 
+def valdate_period(start_date: date, end_date: date, period: str, period_start: datetime) -> bool:
+    """ Проверяем - полностью ли укладывается период period с началом в period_start в промежуток времени 
+    между start_date и end_date (полностью включающий граничные дни)"""
+    
+    def get_last_second_of_month(dt: datetime) -> datetime:
+        """ Возвращаем последнюю секунду месяца для заданного момента времени """
+        next_month = dt.replace(day=28) + timedelta(days=4)
+        last_day_of_month = next_month - timedelta(days=next_month.day)
+        return last_day_of_month.replace(hour=23, minute=59, second=59)
+
+    def get_last_second_of_year(dt: datetime) -> datetime:
+        """ Возвращаем последнюю секунду года для заданного момента времени """
+        year = dt.year + 1
+        last_second = datetime(year, 1, 1) - timedelta(seconds=1)
+        return last_second
+    
+    # данные периоды не требуют валидации
+    if period.lower() in ('hour', 'day', 'week'):
+        return True
+    
+    # формируем объекты datetime из date
+    start_moment = datetime.combine(start_date, datetime.min.time())
+    end_moment = datetime.combine(end_date, datetime.min.time()) + timedelta(days=1)
+    # находим последнюю секунду периода
+    if period.lower() == 'month':
+        period_end = get_last_second_of_month(period_start)
+    if period.lower() == 'year':
+        period_end = get_last_second_of_year(period_start)
+
+    if period_start < start_moment or period_end > end_moment:
+        return False
+    return True
+
+
 def create_spreadsheet(workdir: str,
                        humid_data: dict[int: list[tuple[datetime, float, float]]],
                        particle_data: dict[int: list[tuple[datetime, float, float]]],
@@ -90,15 +124,21 @@ def create_spreadsheet(workdir: str,
         prepare_head(sheet)  # создание шапки листа
         for dt in sorted(combined_data[period].keys()):  # ИТЕРАЦИЯ ПО ВРЕМЕНАМ НАЧАЛА ПЕРИОДА
             # добавление строки
-            sheet.append([', '.join([str(id_) for id_ in sorted(combined_data[period][dt]['ids'])]),
-                          form_period_repr(dt, period),
-                          combined_data[period][dt]['p1'],
-                          combined_data[period][dt]['p2'],
-                          combined_data[period][dt]['humid'],
-                          combined_data[period][dt]['temp'],
-                          lat,
-                          lon])
+            if valdate_period(start_date, end_date, period, dt):
+                sheet.append([', '.join([str(id_) for id_ in sorted(combined_data[period][dt]['ids'])]),
+                            form_period_repr(dt, period),
+                            combined_data[period][dt]['p1'],
+                            combined_data[period][dt]['p2'],
+                            combined_data[period][dt]['humid'],
+                            combined_data[period][dt]['temp'],
+                            lat,
+                            lon])
         apply_borders(sheet)  # задаение границ всем ячейкам листа
+
+        # если в лист в итоге пуст - удаляем его
+        if sheet.max_row <= 1:
+            wb.remove(sheet)
+
 
     # СОХРАНЕНИЕ ФАЙЛА        
     ids = list(humid_data.keys()) + list(particle_data.keys())

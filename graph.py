@@ -50,8 +50,6 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
     reddish_color = reddish_colors_generator()
     marker = marker_generator()
 
-    # Код ниже - легаси от предыдущей версии файла, где были реализованы две различные оси Y для разных типов данных. 
-
     ax1.grid(True, axis='both', color='lightgrey')
 
     y_max = 0
