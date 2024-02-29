@@ -6,9 +6,9 @@ from tkinter import Tk
 
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.styles import Font, Border, Side
+from openpyxl.styles import Font, Border, Side, PatternFill
 
-from data import combine_mean_datasets, get_lat_long
+from data import combine_mean_datasets, get_lat_long, find_low_quality_monthly_values
 from storage import ensure_dir_exists
 
 import locale
@@ -94,6 +94,34 @@ def valdate_period(start_date: date, end_date: date, period: str, period_start: 
     return True
 
 
+def mark_low_qality_monthly_values(wb: Workbook,
+                                   humid_data: dict[int: list[tuple[datetime, float, float]]],
+                                   particle_data:  dict[int: list[tuple[datetime, float, float]]]):
+    """ В excel таблице помечаем ячейки с малодостоверными месячными значениями красной заливкой.
+    Малодостоверными считаем те месяцы, в которых данные по сенсорам есть менее чем за 15 дней из месяца."""
+    red_fill = PatternFill(start_color='FF795C', end_color='FF795C', fill_type='solid')
+    if 'Месяц' in wb.sheetnames:
+        ws = wb['Месяц']
+        # получаем список с единственным (в данном случае) списком месяцев с малодостоверными значениями
+        bad_months_humid = list(find_low_quality_monthly_values(humid_data).values())
+        bad_months_particle = list(find_low_quality_monthly_values(particle_data).values())
+        # избавляемся от внешнего обертывающего списка
+        bad_months_humid = bad_months_humid[0] if bad_months_humid else bad_months_humid
+        bad_months_particle = bad_months_particle[0] if bad_months_particle else bad_months_particle
+        # преобразуем объекты datetime в текстовые представления, которые используются в таблице
+        bad_months_humid = [form_period_repr(dt, 'month') for dt in bad_months_humid]
+        bad_months_particle = [form_period_repr(dt, 'month') for dt in bad_months_particle]
+
+        # перебираем строки таблицы, если находим текущий месяц в списке плохих значений - отмечаем значение красной заливкой
+        for row in ws:
+            if len(row) > 3 and row[1].value in bad_months_particle:
+                row[2].fill = red_fill
+                row[3].fill = red_fill
+            if len(row) > 5 and row[1].value in bad_months_humid:
+                row[4].fill = red_fill
+                row[5].fill = red_fill
+
+
 def create_spreadsheet(workdir: str,
                        humid_data: dict[int: list[tuple[datetime, float, float]]],
                        particle_data: dict[int: list[tuple[datetime, float, float]]],
@@ -139,6 +167,8 @@ def create_spreadsheet(workdir: str,
         if sheet.max_row <= 1:
             wb.remove(sheet)
 
+    # помечаем малодостоверные месячные значения.
+    mark_low_qality_monthly_values(wb, humid_data, particle_data)
 
     # СОХРАНЕНИЕ ФАЙЛА        
     ids = list(humid_data.keys()) + list(particle_data.keys())

@@ -173,6 +173,25 @@ def bring_datasets_to_mean_values(datasets: dict[int: list[tuple[datetime, float
     return result
 
 
+def find_low_quality_monthly_values(datasets: dict[int: list[tuple[datetime, float, float]]]
+                                    ) -> dict[int: list[datetime]]:
+    result = {}
+
+    for sensor_id, dataset in datasets.items():
+        newdata = {} # промежуточное хранилище
+        for dt, _value1, _value2 in dataset:
+            month = round_datetime_down(dt, 'month') 
+            day = round_datetime_down(dt, 'day')
+            if month in newdata:
+                newdata[month].add(day)
+            else:
+                newdata[month] = {day}
+        result[sensor_id] = [month for month, days in newdata.items() if len(days) < 15]
+
+    return result
+
+
+
 def combine_mean_datasets(humid_data: dict[int: list[tuple[datetime, float, float]]],
                           particle_data:  dict[int: list[tuple[datetime, float, float]]],
                           ) -> dict[str: dict[datetime: dict]]:
@@ -185,8 +204,10 @@ def combine_mean_datasets(humid_data: dict[int: list[tuple[datetime, float, floa
     for period in ('hour', 'day', 'week', 'month', 'year'):
         if humid_data:
             humid_id = list(humid_data.keys())[0]
-            combined_data = {ts: {'temp': round(v1, 2), 
-                                  'humid': round(v2, 2), 
+            combined_data = {ts: {'temp': round(v1, 2),
+                                  'temp_quality': True, 
+                                  'humid': round(v2, 2),
+                                  'humid_quality': True, 
                                   'p1': None, 
                                   'p2': None, 
                                   'ids': {humid_id},
