@@ -180,8 +180,9 @@ def bring_datasets_to_mean_values(datasets: dict[int: list[tuple[datetime, float
 
 def find_low_quality_monthly_values(datasets: dict[int: list[tuple[datetime, float, float]]]
                                     ) -> dict[int: list[datetime]]:
+    """ Находим низкокачественные месячные значения в датасетах.
+    Низкокачественными считаются значния, когда данные присутствуют менее чем за 15 дней из месяца."""
     result = {}
-
     for sensor_id, dataset in datasets.items():
         newdata = {} # промежуточное хранилище
         for dt, _value1, _value2 in dataset:
@@ -192,14 +193,14 @@ def find_low_quality_monthly_values(datasets: dict[int: list[tuple[datetime, flo
             else:
                 newdata[month] = {day}
         result[sensor_id] = [month for month, days in newdata.items() if len(days) < 15]
-
     return result
 
 
 def combine_mean_datasets(humid_data: dict[int: list[tuple[datetime, float, float]]],
                           particle_data:  dict[int: list[tuple[datetime, float, float]]],
                           ) -> dict[str: dict[datetime: dict]]:
-    """ Формирует данные для печати в отображения """
+    """ Получает на вход датасеты (в каждом из которых - максимум 1 сенсор).
+    Возвращает словарь, на основе которого будет создана таблица excel. """
 
     if len(humid_data) not in (1, 0) or len(particle_data) not in (1, 0):
         raise ValueError('Максимум 1 датчик каждого типа сенсоров.')
