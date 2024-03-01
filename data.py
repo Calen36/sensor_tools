@@ -1,3 +1,5 @@
+""" Здесь лежат функции чтения из файлов и обработки различных данных """
+
 import csv
 from datetime import date, datetime, timedelta
 from os import path, walk
@@ -20,14 +22,15 @@ def get_rows_from_csv(filename: str) -> list[int, datetime, float, float]:
     with open(filename, 'r') as file:
         csv_reader = csv.reader(file, delimiter=';')
 
-        for row in csv_reader:
+        for row_i, row in enumerate(csv_reader):
             try:
                 if row_type == 'sds011':
                     rows.append((int(row[0]), datetime.fromisoformat(row[5]), float(row[6]), float(row[9])))
                 elif row_type == 'htu21d':
                     rows.append((int(row[0]), datetime.fromisoformat(row[5]), float(row[6]), float(row[7])))
-            except:
-                pass
+            except Exception as ex:
+                if row_i > 0:  # 1я строка - шапка, ее игнорируем.
+                    print(f'Не распознана строка №{row_i} в файле {filename}')
     return rows
             
 
@@ -90,19 +93,21 @@ def get_sensor_data(workdir:str,
                     ) -> tuple[dict[int: tuple[datetime, float, float]], dict[int: tuple[datetime, float, float]]]:
     """ Агрегирует все строки из всех подходящих по дате файлов в два словаря - particle_data и humid_data"""
     
-    # находим файлы, подходящие по времени
+    # находим файлы с данными для заданных сенсоров, подходящие по времени
     files = get_csv_files(workdir, ids, start_date, end_date)
     if not files:
         return {}, {}
-    # обновляем gui
-    root_app.update_idletasks()
-    root_app.update()
+    
+    if root_app:
+        # обновляем gui
+        root_app.update_idletasks()
+        root_app.update()
 
     # сюда складываются результаты
     humid_data = {}
     particle_data = {}
 
-    # перебираем файлы, парсим, извлекаем строки и складываем в словари
+    # перебираем файлы csv, парсим, извлекаем строки и складываем в словари
     for filepath in files:
         # base_name = path.basename(filepath)
         root_app.update_idletasks()
@@ -191,7 +196,6 @@ def find_low_quality_monthly_values(datasets: dict[int: list[tuple[datetime, flo
     return result
 
 
-
 def combine_mean_datasets(humid_data: dict[int: list[tuple[datetime, float, float]]],
                           particle_data:  dict[int: list[tuple[datetime, float, float]]],
                           ) -> dict[str: dict[datetime: dict]]:
@@ -246,17 +250,6 @@ def get_ds_time_span(humid_datasets: dict[str, tuple[datetime, float]],
     if all_dates:
         return max(all_dates) - min(all_dates)
     return timedelta(0)
-
-
-if __name__ == "__main__":
-    fn = '/home/durito/Sensor_data/2024/2024-02-01_htu21d_sensor_216.csv'
-    with open(fn, 'r') as file:
-        reader = csv.reader(file, delimiter='l')
-        for i, row in enumerate(reader):
-            val = row[3]
-
-            print(val)
-            break
 
 
 if __name__ == "__main__":

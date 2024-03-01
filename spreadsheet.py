@@ -1,3 +1,5 @@
+""" Функции построения таблиц excel """
+
 import csv
 from datetime import date, datetime, timedelta
 from os import path, walk
@@ -53,7 +55,6 @@ def form_period_repr(dt: datetime, period: str) -> str:
         plus_6days = dt + timedelta(days=6)
         return f"{dt.strftime('%Y.%m.%d')} - {plus_6days.strftime('%Y.%m.%d')}"
     if period == 'month':
-        # return f"{dt.strftime('%b').capitalize()} {dt.year}"
         return f"{dt.year}.{dt.month}"
     if period == 'year':
         return str(dt.year)
@@ -61,8 +62,9 @@ def form_period_repr(dt: datetime, period: str) -> str:
     
 
 def valdate_period(start_date: date, end_date: date, period: str, period_start: datetime) -> bool:
-    """ Проверяем - полностью ли укладывается период period с началом в period_start в промежуток времени 
-    между start_date и end_date (полностью включающий граничные дни)"""
+    """ Проверяем - полностью ли укладывается период типа period ('month', 'year' и т.п.)
+    с началом в period_start в промежуток времени между start_date и end_date 
+    (промежуток полностью включает граничные дни)"""
     
     def get_last_second_of_month(dt: datetime) -> datetime:
         """ Возвращаем последнюю секунду месяца для заданного момента времени """
@@ -96,7 +98,7 @@ def valdate_period(start_date: date, end_date: date, period: str, period_start: 
 
 def mark_low_qality_monthly_values(wb: Workbook,
                                    humid_data: dict[int: list[tuple[datetime, float, float]]],
-                                   particle_data:  dict[int: list[tuple[datetime, float, float]]]):
+                                   particle_data:  dict[int: list[tuple[datetime, float, float]]]) -> None:
     """ В excel таблице помечаем ячейки с малодостоверными месячными значениями красной заливкой.
     Малодостоверными считаем те месяцы, в которых данные по сенсорам есть менее чем за 15 дней из месяца."""
     red_fill = PatternFill(start_color='FF795C', end_color='FF795C', fill_type='solid')
@@ -127,7 +129,8 @@ def create_spreadsheet(workdir: str,
                        particle_data: dict[int: list[tuple[datetime, float, float]]],
                        start_date: date,
                        end_date: date) -> str:
-    """ СОЗДАНИЕ ТАБЛИЦЫ ИЗ ДАННЫХ 1го или 2х (разного типа) СЕНСОРОВ """
+    """ СОЗДАНИЕ ТАБЛИЦЫ ИЗ ДАННЫХ 1го или 2х (разного типа) СЕНСОРОВ.
+    Возвращаем имя созданного файла"""
 
     sensor_ids = list(humid_data.keys()) + list(particle_data.keys())
     lat, lon = get_lat_long(workdir, sensor_ids[0], start_date, end_date)

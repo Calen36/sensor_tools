@@ -37,7 +37,7 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
                  sensor_names: dict[int:str] = {},
                  title: str = '',
                  graph_style: str = ''):
-    """ Рисуем графики на основе переданных датасетов. У каждого (из 2х) типа датасетов - своя ось ординат."""
+    """ Строим графики на основе переданных датасетов."""
 
     fig, ax1 = plt.subplots()
     if title:
@@ -53,8 +53,6 @@ def render_graph(humid_datasets: dict[str, tuple[datetime, float]],
     ax1.grid(True, axis='both', color='lightgrey')
 
     y_max = 0
-
-    # humid_ax.grid(True, axis='y', zorder=0, color=humid_grid_color)
 
     # ГРАФИКИ ВЛАЖНОСТИ
     if humid_datasets:
