@@ -52,7 +52,11 @@ def download_csv(target_dir: str, sensor_type: str, sensor_id: str, date: date) 
     try:
         date_repr = f'{date.year}-{str(date.month).zfill(2)}-{str(date.day).zfill(2)}'
         filename = f'{date_repr}_{sensor_type}_sensor_{sensor_id}.csv'
-        url = f'https://archive.sensor.community/{date_repr}/{filename}'
+        if date.year >= 2023:
+            url = f'https://archive.sensor.community/{date_repr}/{filename}'
+        else:
+            url = f'https://archive.sensor.community/{date.year}/{date_repr}/{filename}'
+            
         if not path.exists(target_dir):
             makedirs(target_dir)
         target_file_path = path.join(target_dir, filename)
@@ -117,7 +121,7 @@ def batch_download(particle_ids: list,
                 print('Закачка прервана')
                 return
             # пытаемся скачать архив
-            if day.year < 2023:
+            if day < date(year=2022, month=7, day=1):
                 dnld_result = download_arhcive(target_dir=year_dir,
                                                sensor_id=sensor_id,
                                                sensor_type=sensor_type,
@@ -177,7 +181,7 @@ def get_remote_filenames(day: date) -> list[str]:
     return results
 
 
-def aggregate_remote_filenames(sensor_ids: list[int], start_date: date, end_date: date, may_go_flag: bool):
+def aggregate_remote_filenames(sensor_ids: list[int], start_date: date, end_date: date, may_go_flag: bool) -> dict:
     results = {sid: [] for sid in sensor_ids}
     current_day = start_date
     while current_day <= end_date:
@@ -198,11 +202,11 @@ def aggregate_remote_filenames(sensor_ids: list[int], start_date: date, end_date
 
 if __name__ == "__main__":
     print('-'*80)
-    # date1 = date.today() - timedelta(days=32)
-    # date2 = date.today() - timedelta(days=30)
-    # files = aggregate_remote_filenames(sensor_ids=[82268, 84439], start_date=date1, end_date=date2, may_go_flag=True)    
-    # print(files)
+    date1 = date(year=2022, month=9, day=1)
+    date2 = date(year=2022, month=11, day=20)
+    files = aggregate_remote_filenames(sensor_ids=[82268, 84439], start_date=date1, end_date=date2, may_go_flag=True)    
+    print(files)
     # print(today)
-    # fns = get_remote_filenames(date1)
-    # print(len(fns))
+    # fns = get_remote_filenames(date(year=2022, month=9, day=1))
+    # print(fns)
 
